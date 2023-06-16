@@ -6,7 +6,9 @@ from PyQt5.QtCore import *
 from PyQt5.QtCore import Qt
 import sqlite3
 from PyQt5.QtWidgets import QWidget, QApplication, QListWidgetItem, QMessageBox
-from client import Client
+import os, datetime
+from datetime import date
+from client.main_client import  Main_Client
 
 
 
@@ -19,11 +21,10 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         self.setFixedWidth(800)
         self.setFixedHeight(600)
 
-        #self.client = Client()
-
-        self.calendar_db = sqlite3.connect("C:\\Users\\Mikhail\\Downloads\\Mess_qstackedw\\messenger\\data.db")
-        cursor = self.calendar_db.cursor()
         self.nickname = ""
+
+        self.calendar_db = sqlite3.connect(os.getcwd()+"\\data.db")
+        cursor = self.calendar_db.cursor()
         cursor.execute("CREATE TABLE IF NOT EXISTS tasks(username TEXT, task TEXT, date TEXT, completed TEXT)")
         self.calendar_db.commit()
 
@@ -59,17 +60,16 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         self.addButton.clicked.connect(self.addNewTask)
 
     def login(self):
+        self.client = Main_Client()
         self.nickname = user_nickname = self.lineEdit_logID.text()
         user_password = self.lineEdit_logPas.text()
 
-        if user_nickname == '':
+        if(self.client.socket is None):
+            self.label_error.setText("Ошибка подключения к серверу")
+        if user_nickname == '' or user_password == '':
             self.label_error.setText("Введен некоректный ID или пароль")
             return
-
-        if user_password == '':
-            self.label_error.setText("Введен некоректный ID или пароль")
-            return
-
+        response = self.client
         # здесь проверка есть ли такой акк в бд и тд и тп
         self.open_menues()
         return
@@ -145,19 +145,17 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         print("Date selected:", dateSelected)
         self.updateTaskList(dateSelected)
 
-    def updateTaskList(self, date):
+    def updateTaskList(self, date:date):
         self.tasksListWidget.clear()
         cursor = self.calendar_db.cursor()
 
-        query = " SELECT * from tasks"
-        results = cursor.execute(query).fetchall()
-        print(results)
-
         query = "SELECT task, completed FROM tasks WHERE date = ? AND username = ?"
-        row = (date, self.nickname,)
+        row = (date.__str__(), self.nickname,)
         results = cursor.execute(query, row).fetchall()
         print(row)
         print(results)
+        query = "SELECT * from tasks"
+        print(cursor.execute(query).fetchall())
         for result in results:
             item = QListWidgetItem(str(result[0]))
             item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
@@ -196,8 +194,7 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         date = self.calendarWidget.selectedDate().toPyDate()
         #print("date = " + date.)
         query = "INSERT INTO tasks VALUES (?,?,?,?)"
-        row = (self.nickname, newTask, "NO", date,)
-        print(row)
+        row = (self.nickname, newTask, date, "NO")
         cursor.execute(query, row)
         self.calendar_db.commit()
         self.updateTaskList(date)
