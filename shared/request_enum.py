@@ -1,7 +1,9 @@
-from enum import StrEnum, auto
+from enum import Enum, auto
 
-class Request(StrEnum):
+class Request(Enum):
     AUTHORISATION = auto()
     REGISTRATION = auto()
     SENDMESSAGE = auto()
     CREATECHAT = auto()
+    DELETECHAT = auto()
+    GETCHATS = auto()

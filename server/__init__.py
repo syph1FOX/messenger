@@ -1,8 +1,7 @@
 __all__ = [
     "Server",
-    "SignalSlots"
     "database",
 ]
 
-from .server import Server, SignalSlots
+from .main_server import Server
 from . import database

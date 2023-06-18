@@ -1,19 +1,12 @@
-from enum import Enum, auto
-from typing import Self
-
 import psycopg2
 from psycopg2 import sql
 from psycopg2 import errors
 from supabase import create_client, Client
 
+from shared.check_account_response import DB_CheckAccountResponse
+
 url = "https://hixdiztoqknyqftpheiz.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpeGRpenRvcWtueXFmdHBoZWl6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY4MDUzOTIzNywiZXhwIjoxOTk2MTE1MjM3fQ.pBqp6opHHbwsouajOn1A0SQDZ9YAVfJ6tsQ37YM4jeQ"
-
-
-class DB_CheckAccountResponse(Enum):
-    OK = auto()
-    WRONG_LOGIN = auto()
-    WRONG_PASSWORD = auto()
 
 
 class AccountsDB():
@@ -30,23 +23,62 @@ class AccountsDB():
 
         return self.__database
     def accounts_collection(self) -> list:
-        data , count = self.DB.table('users').select('*').execute()
-        return data[1]
-
+        try:
+            data , count = self.DB.table('users').select('*').execute()
+            return data[1]
+        except:
+            print('Проблема с получением данных аккаунтов')
+            return []
     def get_account_info(self, login: str) -> dict | None:
-        data, count = self.DB.table('users').select('*').eq('login', login).execute()
-        return data
+        try:
+            data, count = self.DB.table('users').select('*').eq('login', login).execute()
+            return data
+        except:
+            print(f'Проблемы с нахождением информации по аккаунту {login}')
+            return {}
 
+    def get_chats(self, login:str) -> list:
+        try:
+            chats = []
+            data, count = self.DB.table('users').select('u_id').eq('login', login).execute()
+            cur_id = data[1][0]['u_id']
+            data, count = self.DB.table('users').select('related_chats').eq('login', login).execute()
+            chats_id = data[1][0]['related_chats']
+            for chat_id in chats_id:
+                data, count = self.DB.table('chats').select('user1_id').eq('chat_id', chat_id).execute()
+                another_id = data[1][0]['user1_id']
+                if(data[1][0]['user1_id'] == cur_id):
+                    data, count = self.DB.table('chats').select('user2_id').eq('chat_id', chat_id).execute()
+                    another_id = data[1][0]['user2_id']
+                data, count = self.DB.table('users').select('name').eq('u_id', another_id).execute()
+                chats.append(data[1][0]['name'])
+            return chats
+        except:
+            print(f'Проблемы с нахождением чатов связанные с аккаунтом {login}')
+            return []
+
+    def get_chat_id(self, u_id1:int, u_id2: int) -> int:
+        try:
+            data, count = self.DB.table('chats').select('chat_id').eq('user1_id', u_id1).eq('user2_id', u_id2).execute()
+            if(data[1]):
+                return data[1]
+            else:
+                data, count = self.DB.table('chats').select('chat_id').eq('user1_id', u_id2).eq('user2_id', u_id1).execute()
+                if(data[1]):
+                    return data[1]
+                else:
+                    return -1
+        except:
+            print('Проблемы с нахождением чата')
+            return -1
     def delete_chat(self, chat_id) -> bool:
         try:
             data, count = self.DB.table("chats").delete().eq("chat_id", chat_id).execute()
+            print("Чат успешно удален")
         except:
             print("Что-то пошло не так или чата с таким id не существует")
             return False
-        else:
-            print("Чат успешно удален")
         return True
-        
     def create_chat(self, u_id1:int, u_id2:int) -> bool:
         try:
             data, count = self.DB.table("chats").select("*").eq("user1_id", u_id1).eq("user2_id", u_id2).execute()
@@ -71,14 +103,15 @@ class AccountsDB():
             data, count = self.DB.table('chats').select("*").eq("chat_id", chat_id)
             if(data[1]):
                 response = self.DB.table('messages').insert({"related chat":f"{chat_id}","body":f"{message}","author":f"{auth_id}"}).execute()
+                print("Сообщение успешно отправлено")
+            else:
+                print('Чат не найден')
+                return False
             #галочка под сообщением в ui
         except:
             print("Сообщение не было отправлено")
             return False
             #условно восклицательный знак в ui
-        else:
-            print("Сообщение успешно отправлено")
-            #две галочки под сообщением в ui
         return True
 
     def check_account(self, entered_password, username) -> DB_CheckAccountResponse:
@@ -106,17 +139,16 @@ class AccountsDB():
     def register_account(self, login, name, password, email) -> bool: 
         try:
             response = self.DB.table('users').insert({"email":f"{email}","login":f"{login}","name":f"{name}","password":f"{password}"}).execute()
+            print("Пользователь зарегестрирован")
         except:
             print("Пользователь с такими данными уже существует")
             return False
-        else:
-            print("Пользователь зарегестрирован")
         return True
 
     def get_messages(self, chat_id:int) -> list:
         try:
             data, count = self.DB.table('messages').select("*").eq('related_chat', chat_id).execute()
-            print(data)
+            print("Сообщения получены")
         except:
             print("Что-то пошло не так. Сообщения не найдены")
             return None

@@ -1,64 +1,101 @@
-from PyQt5 import QtCore, QtWidgets, QtNetwork
-from PySide6.QtCore import QObject, QDataStream
-from PySide6.QtNetwork import QTcpSocket
+from typing import Self
+from PySide6.QtCore import QObject, QDataStream, QByteArray
+from PySide6.QtNetwork import QTcpSocket, QHostAddress
 
-from .receive_thread import ReceiveThread
-from shared.signals import Signals, SignalTypes
-from shared.socket_types import SocketType
+from shared.request_enum import Request
+from shared._signals import Signals
+from shared.ABC import QSingleton, Singleton
+from shared.check_account_response import DB_CheckAccountResponse
 
-
+# class Main_ClientBase(QObject, metaclass = QSingleton):
+#      pass
 class Main_Client(QObject):#сделать сигналы которые будет принимать сервер
-    def __init__(self):
-        self.host = 'localhost'
+    _instance = None
+    def __new__(cls) -> Self:
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.init()
+        return cls._instance
+    def init(self):
+        self.host = QHostAddress(QHostAddress.SpecialAddress.LocalHost)
         self.port = 5555
         self.socket = QTcpSocket()
-        self.socket_type = SocketType.ACCOUNT_INITIAL
-        if(not self.socket.connectToHost(self.host, self.port)):
-            self.socket = None
-        else:
-            self.messages = []
-            self.signals = Signals()
-            self.socket.readyRead.connect(self.SlotReadyRead)
+        self.signals = Signals()
+        self.isConnected = False
+        self.socket.readyRead.connect(self.SlotReadyRead)
+        self.socket.disconnected.connect(self.signals.disconnect_from_server.emit)
         
     def SlotReadyRead(self):
+        response = None
         inp = QDataStream(self.socket)
         if(inp.status() is not QDataStream.Status.Ok):
             return
-        response : str
-        signal_type : int
-        signal_type = inp.readInt32()
-        response = inp.readString()
-        match signal_type:
-            case SignalTypes.CHECK_ACCOUNT:
-                if(response):
-                    pass
-            case SignalTypes.REG_ACCOUNT:
+        inp.startTransaction()
+        response = inp.readQVariant()
+        if(not isinstance(response[0], Request)):
+            print("Incorrect data received by client")
+            return
+        inp.commitTransaction()
+        match response[0]:
+            case Request.AUTHORISATION:
+                if(response[1] == DB_CheckAccountResponse.OK):
+                    print("Succesful authorisation")
+                self.signals.check_account.emit(response[1])
+            case Request.REGISTRATION:
+                if(response[1]):
+                    print("Successful registration")
+                self.signals.reg_account.emit(response[1])
+            case Request.GETCHATS:
+                self.signals.get_chats.emit(response[1])
+            case Request.CREATECHAT:
                 pass
-            case _:#если дефолт то это чаттинг и надо принять сообщение и написать его в ui
+            case Request.DELETECHAT:
+                pass
+            case Request.SENDMESSAGE:
                 pass
 
+    def connect(self):
+        self.socket.connectToHost(self.host, self.port)
+        self.isConnected = self.socket.waitForConnected()
+        return self.isConnected
 
-    def connect(self, host, port):#тупо подключение к серверу
-        try:
-            self.socket.connectToHost(host,port)
-            return True
-
-        except:
-            print("Connection error")
-            return False
+    def disconnect(self):
+        self.isConnected = False
+        self.socket.disconnectFromHost()
         
-    def check_account(self, login:str, password:str):#отправить сигнал серверу чтобы сервер проверил на бд акк с данными логином и паролем
-        self.signals.check_account.emit(login, password)
-    def reg_account(self, login, password):#отправить сигнал серверу чтобы сервер создал на бд акк с данными логином и паролем
-        pass
-    def send_to_server(self, message):#отправка сообщения конкретному челику
-        outp = QDataStream(self.socket)
+    def check_account(self, login:str, password:str):
+        data = []
+        data.append(Request.AUTHORISATION)
+        data.append(login)
+        data.append(password)
+        self.send_to_server(data)
+    def reg_account(self, login:str, password:str, name:str, email:str):
+        data = []
+        data.append(Request.REGISTRATION)
+        data.append(login)
+        data.append(name)
+        data.append(password)
+        data.append(email)
+        self.send_to_server(data)
+    def get_chats(self, login:str):
+        data = []
+        data.append(Request.GETCHATS)
+        data.append(login)
+        self.send_to_server(data)
+    def create_chat(self, login1:str, login2:str):
+        self.signals.add_chat.emit(login1, login2)
+    def get_messages(self, login1:str, login2:str):
+        self.signals.get_messages.emit(login1, login2)
+
+    def send_to_server(self, data):
+        block = QByteArray()
+        outp = QDataStream(block, QDataStream.OpenModeFlag.WriteOnly)
         if(outp.status() is not QDataStream.Status.Ok):
             return
-        print("sent: " + message)
         try:
-            self
-        except Exception as e:
-            error = "Unable to send message '{}'".format(str(e))
-            print("[INFO]", error)
+            outp.writeQVariant(data)
+        except:
+            print("Error send message to server")
+        else:
+            self.socket.write(block)
     

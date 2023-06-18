@@ -7,6 +7,7 @@ class ChatManager(QObject):
     def __init__(self, parent: QObject | None = ...) -> None:
         super().__init__(parent)
     
+    #определение комнаты в которую заходит клиент
     def identify_chatroom(self, room, author, message, receiver = None):
         if(room in self.chatrooms):
             self.chatrooms[room].sendMessage(author, message)
@@ -15,6 +16,7 @@ class ChatManager(QObject):
             self.chatrooms[room] = chatroom
             chatroom.sendMessage(author, message)
 
+#комната-чат
 class ChatRoom():
     def __init__(self, db:AccountsDB) -> None:
         self.sockets = []

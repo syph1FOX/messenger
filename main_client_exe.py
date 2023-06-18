@@ -1,15 +1,14 @@
-from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtGui import QIcon
+from PySide6 import QtWidgets, QtCore, QtGui
+from PySide6.QtGui import QIcon
 import mmm
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import *
-from PyQt5.QtCore import Qt
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import *
+from PySide6.QtCore import Qt
 import sqlite3
-from PyQt5.QtWidgets import QWidget, QApplication, QListWidgetItem, QMessageBox
-import os, datetime
+from PySide6.QtWidgets import QWidget, QApplication, QListWidgetItem, QMessageBox
+import os, datetime, time, sys
 from datetime import date
-from client.main_client import  Main_Client
-
+from client.main_client import Main_Client, DB_CheckAccountResponse
 
 
 class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
@@ -21,13 +20,6 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         self.setFixedWidth(800)
         self.setFixedHeight(600)
 
-        self.nickname = ""
-
-        self.calendar_db = sqlite3.connect(os.getcwd()+"\\data.db")
-        cursor = self.calendar_db.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS tasks(username TEXT, task TEXT, date TEXT, completed TEXT)")
-        self.calendar_db.commit()
-
         # при запуске прилоги откроется страница с логином
         self.stackedWidget.setCurrentWidget(self.logining_p)
 
@@ -36,6 +28,7 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
 
         # при удачной авторизации открывает страницу с 2 вкладками (списком диалогов и ежедневником)
         self.pushButton_logIn.clicked.connect(self.login)
+        self.pushButton_Registrate.clicked.connect(self.registrate)
 
         self.pushButton_newChat.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.messenging))
         # self.pushButton_newChat.clicked.connect(self.get_messages)
@@ -55,47 +48,80 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
 
         # для ежедневника
         self.calendarWidget.selectionChanged.connect(self.calendarDateChanged)
-        self.calendarDateChanged()
         self.saveButton.clicked.connect(self.saveChanges)
         self.addButton.clicked.connect(self.addNewTask)
 
+        self.client = None
+
+    def init_client(self):
+        if(self.client is None):
+            self.client = Main_Client()
+            self.client.signals.disconnect_from_server.connect(self.disconnect_response)
+            self.client.signals.check_account.connect(self.login_response)
+            self.client.signals.reg_account.connect(self.registrate_response)
+            self.client.signals.get_chats.connect(self.show_chats)
+
+    def disconnect_response(self):
+        self.label_error.setText("Клиент отключен от сервера")
+
     def login(self):
-        self.client = Main_Client()
+        self.init_client()
+        if(not self.client.isConnected and not self.client.connect()):
+            self.label_error.setText("Ошибка подключения к серверу")
+            return
         self.nickname = user_nickname = self.lineEdit_logID.text()
         user_password = self.lineEdit_logPas.text()
 
-        if(self.client.socket is None):
-            self.label_error.setText("Ошибка подключения к серверу")
         if user_nickname == '' or user_password == '':
             self.label_error.setText("Введен некоректный ID или пароль")
             return
-        response = self.client
-        # здесь проверка есть ли такой акк в бд и тд и тп
-        self.open_menues()
-        return
+        
+        self.client.check_account(user_nickname, user_password)
+    
+    def login_response(self, response:DB_CheckAccountResponse):
+        if(response == DB_CheckAccountResponse.OK):
+            self.open_menues()
+        else:
+            self.label_error.setText("Введен некоректный ID или пароль")
+
     def logout(self):
         self.nickname = ""
+        self.client.disconnect()
         self.listWidget_chats.clear()
         self.stackedWidget.setCurrentWidget(self.logining_p)
 
     def registrate(self):  # для кнопки Создать аккаунт
-        # user_name = self.textEdit_makeName.text()
-        # user_surname = self.textEdit_makeSurname.text()
-        # user_mail = self.textEdit_makeMail.text()
-        # user_phone = self.textEdit_makePhone.text()
-        # user_id = self.textEdit_makeID.text()
-        # user_pass = self.textEdit_makePas.text()
-        pass
-        # self.reg = Registration()
-        # self.reg.show()
-        # self.hide()
+        self.nickname = user_login = self.lineEdit_makeID.text()
+        user_name = self.lineEdit_makeName.text()
+        user_password = self.lineEdit_makePas.text()
+        user_mail = self.lineEdit_makeMail.text()
+        self.init_client()
+        if(not self.client.isConnected and not self.client.connect()):
+            self.stackedWidget.setCurrentWidget(self.logining_p)
+            self.label_error.setText("Регистрация не удалась")
+            return
+
+        if user_login == '' or user_name == '' or user_password == '':
+            self.stackedWidget.setCurrentWidget(self.logining_p)
+            self.label_error.setText("Введено недостаточно данных")
+            return
+        
+        self.client.reg_account(user_login, user_password, user_name, user_mail)
+
+    def registrate_response(self, response:bool):
+        if(response):
+            self.open_menues()
+        else:
+            self.label_error.setText("Регистрация не удалась")
 
     def open_menues(self):  # для кнопки залогиниться
+        self.calendar_db = sqlite3.connect(os.getcwd()+"\\data.db")
+        cursor = self.calendar_db.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS tasks(username TEXT, task TEXT, date TEXT, completed TEXT)")
+        self.calendar_db.commit()
+        self.calendarDateChanged()
         self.stackedWidget.setCurrentWidget(self.menues_p)
         self.get_chats()
-        # self.menues = MenuesWindow()
-        # self.menues.show()
-        # self.hide()
 
     # для работы с сообщениями
     def show_messages(self, message1):
@@ -122,14 +148,13 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
 
     #  для работы со списком чатов
     def get_chats(self):
-        for i in range(5):
-            self.show_chats()
+        self.client.get_chats(self.nickname)
 
-
-    def show_chats(self):
-        item_chat = QtWidgets.QListWidgetItem()
-        item_chat.setText("chat")
-        self.listWidget_chats.addItem(item_chat)
+    def show_chats(self, chats:list):
+        for chat in chats:
+            item_chat = QtWidgets.QListWidgetItem()
+            item_chat.setText(chat)
+            self.listWidget_chats.addItem(item_chat)
 
 
     def new_chat(self):
@@ -140,9 +165,7 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
 
     # для ежедневника
     def calendarDateChanged(self):
-        print("The calendar date was changed.")
-        dateSelected = self.calendarWidget.selectedDate().toPyDate()
-        print("Date selected:", dateSelected)
+        dateSelected = self.calendarWidget.selectedDate().toPython()
         self.updateTaskList(dateSelected)
 
     def updateTaskList(self, date:date):
@@ -152,10 +175,7 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         query = "SELECT task, completed FROM tasks WHERE date = ? AND username = ?"
         row = (date.__str__(), self.nickname,)
         results = cursor.execute(query, row).fetchall()
-        print(row)
-        print(results)
         query = "SELECT * from tasks"
-        print(cursor.execute(query).fetchall())
         for result in results:
             item = QListWidgetItem(str(result[0]))
             item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
@@ -192,7 +212,6 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
 
         cursor = self.calendar_db.cursor()
         date = self.calendarWidget.selectedDate().toPyDate()
-        #print("date = " + date.)
         query = "INSERT INTO tasks VALUES (?,?,?,?)"
         row = (self.nickname, newTask, date, "NO")
         cursor.execute(query, row)
@@ -205,4 +224,4 @@ if __name__ == '__main__':
     App = QtWidgets.QApplication([])
     window = Window()
     window.show()
-    App.exec_()
+    sys.exit(App.exec())
