@@ -7,3 +7,4 @@ class Request(Enum):
     CREATECHAT = auto()
     DELETECHAT = auto()
     GETCHATS = auto()
+    GETMESSAGES = auto()

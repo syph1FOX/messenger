@@ -37,9 +37,9 @@ class AccountsDB():
             print(f'Проблемы с нахождением информации по аккаунту {login}')
             return {}
 
-    def get_chats(self, login:str) -> list:
+    def get_chats(self, login:str) -> dict:
         try:
-            chats = []
+            chats = {}
             data, count = self.DB.table('users').select('u_id').eq('login', login).execute()
             cur_id = data[1][0]['u_id']
             data, count = self.DB.table('users').select('related_chats').eq('login', login).execute()
@@ -51,21 +51,29 @@ class AccountsDB():
                     data, count = self.DB.table('chats').select('user2_id').eq('chat_id', chat_id).execute()
                     another_id = data[1][0]['user2_id']
                 data, count = self.DB.table('users').select('name').eq('u_id', another_id).execute()
-                chats.append(data[1][0]['name'])
+                chats[another_id] = data[1][0]['name']
             return chats
         except:
             print(f'Проблемы с нахождением чатов связанные с аккаунтом {login}')
-            return []
+            return {}
 
-    def get_chat_id(self, u_id1:int, u_id2: int) -> int:
+    def get_chat_id(self, login1, name2) -> int:
         try:
+            data, count = self.DB.table('users').select('u_id').eq('login', login1).execute()
+            if(data[1] is None):
+                return -1
+            u_id1 = data[1][0]['u_id']
+            data, count = self.DB.table('users').select('u_id').eq('name', name2).execute()
+            if(data[1] is None):
+                return -1
+            u_id2 = data[1][0]['u_id']
             data, count = self.DB.table('chats').select('chat_id').eq('user1_id', u_id1).eq('user2_id', u_id2).execute()
             if(data[1]):
-                return data[1]
+                return data[1][0]['chat_id']
             else:
                 data, count = self.DB.table('chats').select('chat_id').eq('user1_id', u_id2).eq('user2_id', u_id1).execute()
                 if(data[1]):
-                    return data[1]
+                    return data[1][0]['chat_id']
                 else:
                     return -1
         except:
@@ -145,10 +153,12 @@ class AccountsDB():
             return False
         return True
 
-    def get_messages(self, chat_id:int) -> list:
+    def get_messages(self, chat_id:int) -> dict:
         try:
             data, count = self.DB.table('messages').select("*").eq('related_chat', chat_id).execute()
             print("Сообщения получены")
+            print(data[1])
+            return data[1]
         except:
             print("Что-то пошло не так. Сообщения не найдены")
             return None

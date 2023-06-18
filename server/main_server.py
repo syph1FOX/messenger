@@ -56,6 +56,8 @@ class Server(QTcpServer):
                 self.reg_account_slot(socket, data[1], data[2], data[3], data[4])
             case Request.GETCHATS:
                 self.get_chats_slot(socket, data[1])
+            case Request.GETMESSAGES:
+                self.get_messages_slot(socket, data[1], data[2])
             case Request.CREATECHAT:
                 pass
             case Request.DELETECHAT:
@@ -84,7 +86,6 @@ class Server(QTcpServer):
 
     #КАК ПОЛУЧАТЬ объект отправитель через сигнал??
     def check_account_slot(self, socket:QTcpSocket, login:str, password:str):
-        print("check_account_slot")
         try:
             response = self.db.check_account(password, login) 
         except:
@@ -128,14 +129,12 @@ class Server(QTcpServer):
         except:
             print("Del chat error")
             return False
-    def get_messages_slot(self, user1_login: str, user2_login: str):
+    def get_messages_slot(self, socket:QTcpSocket, user1_login: str, user2_name: str):
         try:
-            user1_id = self.db.get_account_info(user1_login)
-            user1_id = user1_id[1]['u_id']
-            user2_id = self.db.get_account_info(user2_login)
-            user2_id = user2_id[1]['u_id']
-            chat_id = self.db.get_chat_id(user1_id, user2_id)
+            chat_id = self.db.get_chat_id(user1_login, user2_name)
             messages = self.db.get_messages(chat_id)
         except:
             print("Get mes error")
             messages = []
+        data = [Request.GETMESSAGES, messages]
+        self.SendToClient(socket, data)

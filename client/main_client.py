@@ -21,6 +21,8 @@ class Main_Client(QObject):#сделать сигналы которые буд�
         self.port = 5555
         self.socket = QTcpSocket()
         self.signals = Signals()
+        self.account = ""
+        self.chat_rooms = {}
         self.isConnected = False
         self.socket.readyRead.connect(self.SlotReadyRead)
         self.socket.disconnected.connect(self.signals.disconnect_from_server.emit)
@@ -47,6 +49,8 @@ class Main_Client(QObject):#сделать сигналы которые буд�
                 self.signals.reg_account.emit(response[1])
             case Request.GETCHATS:
                 self.signals.get_chats.emit(response[1])
+            case Request.GETMESSAGES:
+                self.signals.get_messages.emit(response[1])
             case Request.CREATECHAT:
                 pass
             case Request.DELETECHAT:
@@ -57,10 +61,12 @@ class Main_Client(QObject):#сделать сигналы которые буд�
     def connect(self):
         self.socket.connectToHost(self.host, self.port)
         self.isConnected = self.socket.waitForConnected()
+        self.chat_rooms = {}
         return self.isConnected
 
     def disconnect(self):
         self.isConnected = False
+        self.chat_rooms = {}
         self.socket.disconnectFromHost()
         
     def check_account(self, login:str, password:str):
@@ -77,15 +83,19 @@ class Main_Client(QObject):#сделать сигналы которые буд�
         data.append(password)
         data.append(email)
         self.send_to_server(data)
-    def get_chats(self, login:str):
+    def get_chats(self):
         data = []
         data.append(Request.GETCHATS)
-        data.append(login)
+        data.append(self.account)
         self.send_to_server(data)
     def create_chat(self, login1:str, login2:str):
         self.signals.add_chat.emit(login1, login2)
-    def get_messages(self, login1:str, login2:str):
-        self.signals.get_messages.emit(login1, login2)
+    def get_messages(self, user:str):
+        data = []
+        data.append(Request.GETMESSAGES)
+        data.append(self.account)
+        data.append(user)
+        self.send_to_server(data)
 
     def send_to_server(self, data):
         block = QByteArray()

@@ -60,6 +60,7 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
             self.client.signals.check_account.connect(self.login_response)
             self.client.signals.reg_account.connect(self.registrate_response)
             self.client.signals.get_chats.connect(self.show_chats)
+            self.client.signals.get_messages.connect(self.show_messages)
 
     def disconnect_response(self):
         self.label_error.setText("Клиент отключен от сервера")
@@ -69,7 +70,7 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         if(not self.client.isConnected and not self.client.connect()):
             self.label_error.setText("Ошибка подключения к серверу")
             return
-        self.nickname = user_nickname = self.lineEdit_logID.text()
+        self.client.account = user_nickname = self.lineEdit_logID.text()
         user_password = self.lineEdit_logPas.text()
 
         if user_nickname == '' or user_password == '':
@@ -85,13 +86,12 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
             self.label_error.setText("Введен некоректный ID или пароль")
 
     def logout(self):
-        self.nickname = ""
         self.client.disconnect()
         self.listWidget_chats.clear()
         self.stackedWidget.setCurrentWidget(self.logining_p)
 
     def registrate(self):  # для кнопки Создать аккаунт
-        self.nickname = user_login = self.lineEdit_makeID.text()
+        self.client.account = user_login = self.lineEdit_makeID.text()
         user_name = self.lineEdit_makeName.text()
         user_password = self.lineEdit_makePas.text()
         user_mail = self.lineEdit_makeMail.text()
@@ -122,22 +122,29 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         self.calendarDateChanged()
         self.stackedWidget.setCurrentWidget(self.menues_p)
         self.get_chats()
+        self.get_messages('Vitalik')
 
     # для работы с сообщениями
-    def show_messages(self, message1):
-        item = QtWidgets.QListWidgetItem()
+    def open_dialog(self):
+        #как-то открывается отдельное окно с чатом
+        pass
 
-        if message1['name'] == "USER":
-            item.setTextAlignment(Qt.AlignRight)
-        item.setText(f"{message1['text']}\n{message1['time']}")
-        self.listWidget_messages.addItem(item)
+    def show_messages(self, messages):
+        pass
+        # item = QtWidgets.QListWidgetItem()
 
+        # if message1['name'] == "USER":
+        #     item.setTextAlignment(Qt.AlignRight)
+        # item.setText(f"{message1['text']}\n{message1['time']}")
+        # self.listWidget_messages.addItem(item)
 
-    def get_messages(self, message):
-        for i in range(len(message)):
-            self.show_messages(message[i])
-            # self.after = messages[i]['time']
-            self.listWidget_messages.scrollToBottom()
+    #вызывается при клике на конкретный чат
+    def get_messages(self, another_nickname):#another_nickname - както получать из ui
+        self.client.get_messages(another_nickname)
+        # for i in range(0):
+        #     self.show_messages()
+        #     # self.after = messages[i]['time']
+        #     self.listWidget_messages.scrollToBottom()
         # pass
 
     def send_message(self):
@@ -146,22 +153,22 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         # your_message.setTextAlignment(Qt.AlignRight)
         self.textBrowser.append('\nYou:\n' + your_message)
 
+
     #  для работы со списком чатов
     def get_chats(self):
-        self.client.get_chats(self.nickname)
+        self.client.get_chats()
 
-    def show_chats(self, chats:list):
+    def show_chats(self, chats:dict):
+        self.client.chat_rooms = chats
         for chat in chats:
             item_chat = QtWidgets.QListWidgetItem()
-            item_chat.setText(chat)
+            item_chat.setText(chats[chat])
             self.listWidget_chats.addItem(item_chat)
 
 
     def new_chat(self):
         pass
 
-    def open_dialog(self):  # открытие конкретного чата
-        pass
 
     # для ежедневника
     def calendarDateChanged(self):
@@ -173,36 +180,36 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         cursor = self.calendar_db.cursor()
 
         query = "SELECT task, completed FROM tasks WHERE date = ? AND username = ?"
-        row = (date.__str__(), self.nickname,)
+        row = (date.__str__(), self.client.account)
         results = cursor.execute(query, row).fetchall()
         query = "SELECT * from tasks"
         for result in results:
             item = QListWidgetItem(str(result[0]))
-            item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
+            item.setFlags(item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
             if result[1] == "YES":
-                item.setCheckState(QtCore.Qt.Checked)
+                item.setCheckState(QtCore.Qt.CheckState.Checked)
             elif result[1] == "NO":
-                item.setCheckState(QtCore.Qt.Unchecked)
+                item.setCheckState(QtCore.Qt.CheckState.Unchecked)
             self.tasksListWidget.addItem(item)
 
     def saveChanges(self):
         cursor = self.calendar_db.cursor()
-        date = self.calendarWidget.selectedDate().toPyDate()
+        date = self.calendarWidget.selectedDate().toPython()
 
         for i in range(self.tasksListWidget.count()):
             item = self.tasksListWidget.item(i)
             task = item.text()
-            if item.checkState() == QtCore.Qt.Checked:
+            if item.checkState() == QtCore.Qt.CheckState.Checked:
                 query = "UPDATE tasks SET completed = 'YES' WHERE username = ? AND task = ? AND date = ?"
             else:
                 query = "UPDATE tasks SET completed = 'NO' WHERE username = ? AND task = ? AND date = ?"
-            row = (self.nickname,task, date,)
+            row = (self.client.account,task, date)
             cursor.execute(query, row)
         self.calendar_db.commit()
 
         messageBox = QMessageBox()
         messageBox.setText("Changes saved.")
-        messageBox.setStandardButtons(QMessageBox.Ok)
+        messageBox.setStandardButtons(QMessageBox.StandardButton.Ok)
         messageBox.exec()
 
     def addNewTask(self):
@@ -211,9 +218,10 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
             return
 
         cursor = self.calendar_db.cursor()
-        date = self.calendarWidget.selectedDate().toPyDate()
+        date = self.calendarWidget.selectedDate().toPython()
+
         query = "INSERT INTO tasks VALUES (?,?,?,?)"
-        row = (self.nickname, newTask, date, "NO")
+        row = (self.client.account, newTask, date, "NO")
         cursor.execute(query, row)
         self.calendar_db.commit()
         self.updateTaskList(date)
