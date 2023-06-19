@@ -65,6 +65,10 @@ class Server(QTcpServer):
                 self.create_chat_slot(socket, data[1], data[2])
             case Request.DELETECHAT:
                 self.del_chat_slot(socket, data[1])
+            case Request.ENTERCHATROOM:
+                self.chat_manager.identify_chatroom(socket, data[1], data[2])
+            case Request.EXITCHATROOM:
+                pass
             case Request.SENDMESSAGE:
                 room = receive_stream.readString()
                 if(not isinstance(room, str)):
@@ -126,7 +130,7 @@ class Server(QTcpServer):
             response = self.db.get_chats(login)
         except:
             print("Get chats error")
-            response = []
+            response = {}
         data = [Request.GETCHATS, response]
         self.SendToClient(socket, data)
 

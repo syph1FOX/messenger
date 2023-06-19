@@ -168,7 +168,7 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         self.label.setText(self.another)
         self.get_messages(self.another)
         self.stackedWidget.setCurrentWidget(self.messenging)
-        self.client.open_chatroom()
+        self.client.open_chatroom(self.another)
 
     def close_dialog(self):
         self.listWidget_messages.clear()

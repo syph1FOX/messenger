@@ -98,8 +98,12 @@ class Main_Client(QObject):#сделать сигналы которые буд�
     def send_message(self, receiver:str, message:str):
         pass
 
-    def open_chatroom(self):
-        pass
+    def open_chatroom(self, username:str):
+        for user_id in self.chat_rooms:
+            if(self.chat_rooms[user_id] == username):
+                data = [Request.ENTERCHATROOM, self.account_id, user_id]
+                self.send_to_server(data)
+                return
 
     def close_chatroom(self):
         pass

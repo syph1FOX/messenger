@@ -10,3 +10,5 @@ class Request(Enum):
     GETMESSAGES = auto()
     GETACCINFO = auto()
     CHANGEINFO = auto()
+    ENTERCHATROOM = auto()
+    EXITCHATROOM = auto()
