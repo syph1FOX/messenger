@@ -30,7 +30,7 @@
      <string notr="true"/>
     </property>
     <property name="currentIndex">
-     <number>2</number>
+     <number>4</number>
     </property>
     <widget class="QWidget" name="logining_p">
      <widget class="QLineEdit" name="lineEdit_logID">
@@ -723,31 +723,6 @@ background-color: #2A2E35;
        <string>Логин</string>
       </property>
      </widget>
-     <widget class="QLineEdit" name="lineEdit_infoID">
-      <property name="geometry">
-       <rect>
-        <x>250</x>
-        <y>230</y>
-        <width>301</width>
-        <height>41</height>
-       </rect>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">background-color: #454E56;
-border: 4pх solid #A9A9A9;
-border-radius: 16;
-padding: 4;
-dont-family: 'Arial';
-font-size: 12px;
-color: white;</string>
-      </property>
-      <property name="maxLength">
-       <number>8</number>
-      </property>
-      <property name="placeholderText">
-       <string>Придумайте логин*</string>
-      </property>
-     </widget>
      <widget class="QGraphicsView" name="graphicsView_3">
       <property name="geometry">
        <rect>
@@ -936,6 +911,49 @@ padding: 4px;</string>
        <string>Выход</string>
       </property>
      </widget>
+     <widget class="QPushButton" name="pushButton_savechanges">
+      <property name="geometry">
+       <rect>
+        <x>380</x>
+        <y>400</y>
+        <width>171</width>
+        <height>41</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #09C372;
+border-radius: 16px;
+color: white;
+font-family: 'Arial';
+font-size: 14px;
+padding: 4px;</string>
+      </property>
+      <property name="text">
+       <string>Сохранить изменения</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_3">
+      <property name="geometry">
+       <rect>
+        <x>250</x>
+        <y>230</y>
+        <width>301</width>
+        <height>41</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #454E56;
+border: 4pх solid #A9A9A9;
+border-radius: 16;
+padding: 4;
+dont-family: 'Arial';
+font-size: 12px;
+color: white;</string>
+      </property>
+      <property name="text">
+       <string>Login (Изменения невозможны)</string>
+      </property>
+     </widget>
      <zorder>graphicsView_3</zorder>
      <zorder>lineEdit_infoMail</zorder>
      <zorder>label_infoPass</zorder>
@@ -946,9 +964,10 @@ padding: 4px;</string>
      <zorder>lineEdit_infoName</zorder>
      <zorder>label_about</zorder>
      <zorder>label_infoWarn</zorder>
-     <zorder>lineEdit_infoID</zorder>
      <zorder>pushButton_backtomenues_2</zorder>
      <zorder>pushButton_exit</zorder>
+     <zorder>pushButton_savechanges</zorder>
+     <zorder>label_3</zorder>
     </widget>
     <widget class="QWidget" name="menues_p">
      <widget class="QTabWidget" name="tabWidget">
@@ -977,7 +996,7 @@ QTabBar::bar{
        <enum>QTabWidget::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -1013,7 +1032,9 @@ font-size: 16px;</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: #2A2E35;
-color: white;</string>
+color: white;
+font-family: 'Arial';
+font-size: 20px;</string>
         </property>
         <property name="frameShadow">
          <enum>QFrame::Sunken</enum>
@@ -1029,7 +1050,7 @@ color: white;</string>
          </rect>
         </property>
         <property name="styleSheet">
-         <string notr="true">background-color: #454E56;
+         <string notr="true">background-color: #09C372;
 border-radius: 16px;
 color: white;
 font-size: 16px;</string>
@@ -1042,7 +1063,7 @@ font-size: 16px;</string>
         <property name="geometry">
          <rect>
           <x>600</x>
-          <y>330</y>
+          <y>380</y>
           <width>161</width>
           <height>41</height>
          </rect>
@@ -1060,54 +1081,11 @@ font-family: 'Arial';
          <string>*Введите логин...</string>
         </property>
        </widget>
-       <widget class="QLineEdit" name="lineEdit_newname">
-        <property name="geometry">
-         <rect>
-          <x>600</x>
-          <y>280</y>
-          <width>161</width>
-          <height>41</height>
-         </rect>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">background-color: #454E56;
-border: none;
-border-radius: 16px;
-color: white;
-font-size: 12px;
-font-family: 'Arial';</string>
-        </property>
-        <property name="placeholderText">
-         <string>*Введите имя...</string>
-        </property>
-       </widget>
-       <widget class="QLineEdit" name="lineEdit_newmail">
-        <property name="geometry">
-         <rect>
-          <x>600</x>
-          <y>380</y>
-          <width>161</width>
-          <height>41</height>
-         </rect>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">background-color: #454E56;
-border: none;
-border-radius: 16px;
-color: white;
-font-size: 12px;
-font-family: 'Arial';
-padding-left: 4px;</string>
-        </property>
-        <property name="placeholderText">
-         <string>Введите почту...</string>
-        </property>
-       </widget>
        <widget class="QLabel" name="label_makenew">
         <property name="geometry">
          <rect>
           <x>610</x>
-          <y>250</y>
+          <y>340</y>
           <width>151</width>
           <height>31</height>
          </rect>
@@ -1135,7 +1113,7 @@ font-family: 'Arial';</string>
 font-family: 'Arial';</string>
         </property>
         <property name="text">
-         <string>TextLabel</string>
+         <string/>
         </property>
        </widget>
       </widget>
@@ -1362,42 +1340,6 @@ font-family: 'Arial';</string>
        <string/>
       </property>
      </widget>
-     <widget class="QTextBrowser" name="textBrowser">
-      <property name="geometry">
-       <rect>
-        <x>560</x>
-        <y>40</y>
-        <width>201</width>
-        <height>441</height>
-       </rect>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">background-color:#2A2E35;
-border-radius: 16px;
-border: none;
-color: white;
-font-family: 'Arial';
-font-size: 16px;</string>
-      </property>
-     </widget>
-     <widget class="QListWidget" name="listWidget_messages">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>60</y>
-        <width>541</width>
-        <height>411</height>
-       </rect>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">background-color:#2A2E35;
-border-radius: 16px;
-border: none;
-color: white;
-font-family: 'Arial';
-font-size: 16px;</string>
-      </property>
-     </widget>
      <widget class="QPushButton" name="pushButton_backtomenues">
       <property name="geometry">
        <rect>
@@ -1423,6 +1365,24 @@ padding: 4px;</string>
       </property>
       <property name="text">
        <string>&lt;</string>
+      </property>
+     </widget>
+     <widget class="QListWidget" name="listWidget_messages">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>60</y>
+        <width>761</width>
+        <height>441</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color:#2A2E35;
+border-radius: 16px;
+border: none;
+color: white;
+font-family: 'Arial';
+font-size: 16px;</string>
       </property>
      </widget>
     </widget>

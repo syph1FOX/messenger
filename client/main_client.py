@@ -16,12 +16,15 @@ class Main_Client(QObject):#сделать сигналы которые буд�
             cls._instance = super().__new__(cls)
             cls._instance.init()
         return cls._instance
+    
     def init(self):
         self.host = QHostAddress(QHostAddress.SpecialAddress.LocalHost)
         self.port = 5555
         self.socket = QTcpSocket()
         self.signals = Signals()
-        self.account = ""
+        self.account_info = {}
+        self.account_nickname = ""
+        self.account_id = -1
         self.chat_rooms = {}
         self.isConnected = False
         self.socket.readyRead.connect(self.SlotReadyRead)
@@ -42,59 +45,97 @@ class Main_Client(QObject):#сделать сигналы которые буд�
             case Request.AUTHORISATION:
                 if(response[1] == DB_CheckAccountResponse.OK):
                     print("Succesful authorisation")
+                    self.account_info = response[2][1][0].copy()
+                    self.account_id = self.account_info['u_id']
                 self.signals.check_account.emit(response[1])
+
             case Request.REGISTRATION:
                 if(response[1]):
                     print("Successful registration")
+                    self.account_info = response[2][1][0].copy()
+                    self.account_id = self.account_info['u_id']
                 self.signals.reg_account.emit(response[1])
+
             case Request.GETCHATS:
                 self.signals.get_chats.emit(response[1])
+
             case Request.GETMESSAGES:
                 self.signals.get_messages.emit(response[1])
+
+            case Request.GETACCINFO:
+                self.account_info = response[1].copy()
+
+            case Request.CHANGEINFO:
+                self.signals.change_account_info.emit(response[1])
+
             case Request.CREATECHAT:
-                pass
+                self.signals.create_chat.emit(response[1])
+
             case Request.DELETECHAT:
+                self.signals.delete_chat.emit(response[1])
+
+            case Request.SENDMESSAGE:#по сути получения нового сообщения в ui(неважно пришло оно получателю или отправителю)
                 pass
-            case Request.SENDMESSAGE:
-                pass
+            
 
     def connect(self):
         self.socket.connectToHost(self.host, self.port)
         self.isConnected = self.socket.waitForConnected()
         self.chat_rooms = {}
+        self.chat_rooms = {}
+        self.account_info = {}
+        self.account_nickname = ""
         return self.isConnected
 
     def disconnect(self):
         self.isConnected = False
         self.chat_rooms = {}
+        self.account_info = {}
+        self.account_nickname = ""
+        self.account_id = -1
         self.socket.disconnectFromHost()
+
+    def send_message(self, receiver:str, message:str):
+        pass
+
+    def open_chatroom(self):
+        pass
+
+    def close_chatroom(self):
+        pass
         
     def check_account(self, login:str, password:str):
-        data = []
-        data.append(Request.AUTHORISATION)
-        data.append(login)
-        data.append(password)
+        data = [Request.AUTHORISATION, login, password]
         self.send_to_server(data)
+
     def reg_account(self, login:str, password:str, name:str, email:str):
-        data = []
-        data.append(Request.REGISTRATION)
-        data.append(login)
-        data.append(name)
-        data.append(password)
-        data.append(email)
+        data = [Request.REGISTRATION, login, name, password, email]
         self.send_to_server(data)
+
+    def change_info(self, name:str, password:str, email:str):
+        if(self.account_info['name'] == name and self.account_info['password'] == password and self.account_info['email'] == email):
+            print("Введены те же данные")
+            return
+        if(not email.__contains__("@")):
+            print("Некорректный почтовый адресс")
+            return
+        data = [Request.CHANGEINFO, self.account_nickname, name, password, email]
+        self.send_to_server(data)
+
     def get_chats(self):
-        data = []
-        data.append(Request.GETCHATS)
-        data.append(self.account)
+        data = [Request.GETCHATS, self.account_nickname]
         self.send_to_server(data)
-    def create_chat(self, login1:str, login2:str):
-        self.signals.add_chat.emit(login1, login2)
+
+    def create_chat(self, login:str):
+        data = [Request.CREATECHAT, self.account_nickname, login]
+        self.send_to_server(data)
+
+    def get_accinfo(self):
+        data = [Request.GETACCINFO, self.account_nickname]
+        self.send_to_server(data)
+
     def get_messages(self, user:str):
-        data = []
-        data.append(Request.GETMESSAGES)
-        data.append(self.account)
-        data.append(user)
+        data = [Request.GETMESSAGES, self.account_nickname, user]
         self.send_to_server(data)
 
     def send_to_server(self, data):

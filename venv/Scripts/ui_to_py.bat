@@ -1,1 +1,1 @@
-pyuic5.exe -x C:\Users\Mikhail\Downloads\Mess_qstackedw\messenger\mmm.ui -o C:\Users\Mikhail\Downloads\Mess_qstackedw\messenger\mmm.py
+pyside6-uic C:\Users\Mikhail\Downloads\Mess_qstackedw\messenger\mmm.ui -o C:\Users\Mikhail\Downloads\Mess_qstackedw\messenger\mmm.py

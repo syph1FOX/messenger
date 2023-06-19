@@ -8,13 +8,12 @@ class ChatManager(QObject):
         super().__init__(parent)
     
     #определение комнаты в которую заходит клиент
-    def identify_chatroom(self, room, author, message, receiver = None):
+    def identify_chatroom(self, room, user1, user2):
         if(room in self.chatrooms):
-            self.chatrooms[room].sendMessage(author, message)
+            pass
         else:
-            chatroom = ChatRoom(author, receiver)
+            chatroom = ChatRoom(user1, user2)
             self.chatrooms[room] = chatroom
-            chatroom.sendMessage(author, message)
 
 #комната-чат
 class ChatRoom():

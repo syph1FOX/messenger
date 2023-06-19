@@ -8,3 +8,5 @@ class Request(Enum):
     DELETECHAT = auto()
     GETCHATS = auto()
     GETMESSAGES = auto()
+    GETACCINFO = auto()
+    CHANGEINFO = auto()

@@ -29,6 +29,7 @@ class AccountsDB():
         except:
             print('Проблема с получением данных аккаунтов')
             return []
+        
     def get_account_info(self, login: str) -> dict | None:
         try:
             data, count = self.DB.table('users').select('*').eq('login', login).execute()
@@ -37,6 +38,17 @@ class AccountsDB():
             print(f'Проблемы с нахождением информации по аккаунту {login}')
             return {}
 
+    def change_account_info(self, login:str, name:str, password:str, email:str) -> bool:
+        try:
+            data = self.get_account_info(login)
+            if(not bool(data)):
+                return False
+            response = self.DB.table('users').update({'name':name, 'password':password, 'email':email}).eq('login', login).execute()
+            print(response)
+            return True
+        except:
+            print(f"Не удалось изменить данные аккаунта{login}")
+            return False
     def get_chats(self, login:str) -> dict:
         try:
             chats = {}
@@ -79,6 +91,7 @@ class AccountsDB():
         except:
             print('Проблемы с нахождением чата')
             return -1
+        
     def delete_chat(self, chat_id) -> bool:
         try:
             data, count = self.DB.table("chats").delete().eq("chat_id", chat_id).execute()
@@ -87,9 +100,11 @@ class AccountsDB():
             print("Что-то пошло не так или чата с таким id не существует")
             return False
         return True
+    
     def create_chat(self, u_id1:int, u_id2:int) -> bool:
         try:
             data, count = self.DB.table("chats").select("*").eq("user1_id", u_id1).eq("user2_id", u_id2).execute()
+            print(data)
             if(data[1]):
                 print("Данный чат уже существует")
                 return False
@@ -102,8 +117,28 @@ class AccountsDB():
             print("Что-то пошло не так")
             return False
         else:
-            response = self.DB.table("chats").insert({"user1_id": f"{u_id1}", "user2_id": f"{u_id2}"}).execute()
-            print(response)
+            try:
+                self.DB.table("chats").insert({"user1_id": u_id1, "user2_id": u_id2}).execute()
+
+                data, count = self.DB.table("chats").select("*").eq("user1_id", u_id1).eq("user2_id", u_id2).execute()
+                new_chatid = data[1][0]['chat_id']
+
+                data, count = self.DB.table("users").select("related_chats").eq("u_id", u_id1).execute()
+                relchats = data[1][0]['related_chats']
+                if(relchats is None):
+                    relchats = []
+                relchats.append(new_chatid)
+                self.DB.table("users").update({'related_chats':relchats}).eq("u_id", u_id1).execute()
+
+                data, count = self.DB.table("users").select("related_chats").eq("u_id", u_id2).execute()
+                relchats = data[1][0]['related_chats']
+                if(relchats is None):
+                    relchats = []
+                relchats.append(new_chatid)
+                self.DB.table("users").update({'related_chats':relchats}).eq("u_id", u_id2).execute()
+            except:
+                self.delete_chat(new_chatid)
+                return False
         return True
 
     def send_message(self, chat_id, auth_id, message) -> bool:
@@ -156,9 +191,7 @@ class AccountsDB():
     def get_messages(self, chat_id:int) -> dict:
         try:
             data, count = self.DB.table('messages').select("*").eq('related_chat', chat_id).execute()
-            print("Сообщения получены")
-            print(data[1])
             return data[1]
         except:
             print("Что-то пошло не так. Сообщения не найдены")
-            return None
+            return {}
