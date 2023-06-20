@@ -9,5 +9,5 @@ class Signals(QObject):
     get_messages = Signal(dict)
     delete_chat = Signal(bool)
     create_chat = Signal(bool)
-    send_message = Signal(bool)
+    send_message = Signal(str, str)
     change_account_info = Signal(bool)

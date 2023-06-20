@@ -30,13 +30,21 @@ class AccountsDB():
             print('Проблема с получением данных аккаунтов')
             return []
         
-    def get_account_info(self, login: str) -> dict | None:
-        try:
-            data, count = self.DB.table('users').select('*').eq('login', login).execute()
-            return data
-        except:
-            print(f'Проблемы с нахождением информации по аккаунту {login}')
-            return {}
+    def get_account_info(self, user) -> dict | None:
+        if(isinstance(user,str)):
+            try:
+                data, count = self.DB.table('users').select('*').eq('login', user).execute()
+                return data
+            except:
+                print(f'Проблемы с нахождением информации по аккаунту {user}')
+                return {}
+        if(isinstance(user, int)):
+            try:
+                data, count = self.DB.table('users').select('*').eq('u_id', user).execute()
+                return data
+            except:
+                print(f'Проблемы с нахождением информации по аккаунту {user}')
+                return {}
 
     def change_account_info(self, login:str, name:str, password:str, email:str) -> bool:
         try:
@@ -68,7 +76,20 @@ class AccountsDB():
         except:
             print(f'Проблемы с нахождением чатов связанные с аккаунтом {login}')
             return {}
-
+    def get_chat_id_straight(self, u_id1, u_id2) ->int:
+        try:
+            data, count = self.DB.table('chats').select('chat_id').eq('user1_id', u_id1).eq('user2_id', u_id2).execute()
+            if(data[1]):
+                return data[1][0]['chat_id']
+            else:
+                data, count = self.DB.table('chats').select('chat_id').eq('user1_id', u_id2).eq('user2_id', u_id1).execute()
+                if(data[1]):
+                    return data[1][0]['chat_id']
+                else:
+                    return -1
+        except:
+            print('Проблемы с нахождением чата')
+            return -1
     def get_chat_id(self, login1, name2) -> int:
         try:
             data, count = self.DB.table('users').select('u_id').eq('login', login1).execute()
@@ -79,15 +100,7 @@ class AccountsDB():
             if(data[1] is None):
                 return -1
             u_id2 = data[1][0]['u_id']
-            data, count = self.DB.table('chats').select('chat_id').eq('user1_id', u_id1).eq('user2_id', u_id2).execute()
-            if(data[1]):
-                return data[1][0]['chat_id']
-            else:
-                data, count = self.DB.table('chats').select('chat_id').eq('user1_id', u_id2).eq('user2_id', u_id1).execute()
-                if(data[1]):
-                    return data[1][0]['chat_id']
-                else:
-                    return -1
+            return self.get_chat_id_straight(u_id1, u_id2)
         except:
             print('Проблемы с нахождением чата')
             return -1
@@ -141,23 +154,18 @@ class AccountsDB():
                 return False
         return True
 
-    def send_message(self, chat_id, auth_id, message) -> bool:
+    def send_message(self, auth_id, receiver_id, message) -> bool:
+        chat_id = self.get_chat_id_straight(auth_id, receiver_id)
         try:
-            data, count = self.DB.table('chats').select("*").eq("chat_id", chat_id)
-            if(data[1]):
-                response = self.DB.table('messages').insert({"related chat":f"{chat_id}","body":f"{message}","author":f"{auth_id}"}).execute()
-                print("Сообщение успешно отправлено")
-            else:
-                print('Чат не найден')
-                return False
-            #галочка под сообщением в ui
+            response = self.DB.table('messages').insert({"related_chat":chat_id,"body":f"{message}","author":auth_id}).execute()
+            print("Сообщение успешно отправлено")
         except:
             print("Сообщение не было отправлено")
+            print(response)
             return False
-            #условно восклицательный знак в ui
         return True
 
-    def check_account(self, entered_password, username) -> DB_CheckAccountResponse:
+    def check_account(self, entered_password:str, username:str) -> DB_CheckAccountResponse:
         try:
             if(username.find("@") == -1):
                 data, count = self.DB.table("users").select("*").eq("login", f"{username}").execute()
@@ -176,8 +184,6 @@ class AccountsDB():
                 print("Пользователя с данным login/email не существует")
                 return DB_CheckAccountResponse.WRONG_LOGIN
         return DB_CheckAccountResponse.OK
-
-    #Сделать дефолтный чат(как избранное в вк)
 
     def register_account(self, login, name, password, email) -> bool: 
         try:

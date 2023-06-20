@@ -6,8 +6,8 @@ from PySide6.QtCore import *
 from PySide6.QtCore import Qt
 import sqlite3
 from PySide6.QtWidgets import QWidget, QApplication, QListWidgetItem, QMessageBox
-import os, datetime, time, sys
-from datetime import date
+import os, time, sys
+from datetime import datetime, date
 from client.main_client import Main_Client, DB_CheckAccountResponse
 from psycopg2 import DATETIME
 
@@ -40,6 +40,7 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
 
         #возврат в меню
         self.pushButton_backtomenues.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.menues_p))
+        self.pushButton_backtomenues.clicked.connect(self.close_dialog)
 
         #настройка аккаунта
         self.pushButton_acc_info.clicked.connect(lambda: self.stackedWidget.setCurrentWidget(self.page_about))
@@ -72,7 +73,8 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
             self.client.signals.get_messages.connect(self.show_messages)
             self.client.signals.change_account_info.connect(self.sace_account_info_response)
             self.client.signals.create_chat.connect(self.create_chat_response)
-            self.client.signals.delete_chat.connect(self)
+            self.client.signals.delete_chat.connect(self.del_chat_response)
+            self.client.signals.send_message.connect(self.get_message)
 
     def save_account_info(self):#для кнопки сохранить в настройках
         print("save_account_info")
@@ -94,7 +96,7 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
         if(self.client.account_info['email'] is not None):
             self.lineEdit_infoMail.setText(self.client.account_info['email'])
         self.lineEdit_infoPas.setText(self.client.account_info['password'])
-        self.label_infoID.setText(self.client.account_info['login'])
+        self.label_3.setText(self.client.account_info['login'])
 
     def disconnect_response(self):
         self.label_error.setText("Клиент отключен от сервера")
@@ -172,10 +174,17 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
 
     def close_dialog(self):
         self.listWidget_messages.clear()
-        self.client.close_chatroom()
+        self.client.exit_chatroom(self.another)
     
-    def get_message(self):#если получил сообщение в открытом диалоге
-        pass
+    def get_message(self, user:str, message:str):#если получил сообщение в открытом диалоге
+        item = QtWidgets.QListWidgetItem()
+        time = datetime.now()
+        item.setText(user + ":\n" + message + "\n" + time.strftime("%H:%M:%S") + "\n")
+        if(user == self.client.account_nickname):
+            item.setTextAlignment(Qt.AlignmentFlag.AlignRight)
+        else:
+            item.setTextAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.listWidget_messages.addItem(item)
 
     def show_messages(self, messages:dict):
         self.listWidget_messages.clear()
@@ -183,10 +192,10 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
             item = QtWidgets.QListWidgetItem()
             if(message['author'] == self.client.account_id):
                 item.setTextAlignment(Qt.AlignmentFlag.AlignRight)
-                item.setText(f"{self.client.account_nickname}:\n{message['body']}\n{message['date']}")
+                item.setText(f"{self.client.account_nickname}:\n{message['body']}\n{message['date']}\n")
             else:
                 item.setTextAlignment(Qt.AlignmentFlag.AlignLeft)
-                item.setText(f"{self.another}:\n{message['body']}\n{message['date']}")
+                item.setText(f"{self.another}:\n{message['body']}\n{message['date']}\n")
             self.listWidget_messages.addItem(item)
 
     def get_messages(self, another_nickname):#another_nickname - както получать из ui
@@ -194,14 +203,10 @@ class Window(QtWidgets.QMainWindow, mmm.Ui_MainWindow):
 
     def send_message(self):
         your_message = self.lineEdit_makeMessage.text()
-        if(your_message.__len__ < 1):
+        if(your_message.__len__() < 1):
             return
-        item = QtWidgets.QListWidgetItem()
-        item.setText(self.client.account_nickname + "\n" + your_message + "\n")#+время как-то
-        item.setTextAlignment(Qt.AlignmentFlag.AlignRight)
-        self.listWidget_messages.addItem(item)
         self.lineEdit_makeMessage.setText('')
-        self.client
+        self.client.send_message(self.another, your_message)
 
     #  для работы со списком чатов
     def get_chats(self):

@@ -40,43 +40,40 @@ class Server(QTcpServer):
         client_socket.disconnected.disconnect(self.slot_storage.pop(f"delete_socket_{client_socket.socketDescriptor()}"))
         self.sockets.remove(client_socket)
 
-    def SlotReadyRead(self, socket):
+    def SlotReadyRead(self, socket:QTcpSocket):
         receive_stream = QDataStream(socket)
-        receive_stream.startTransaction()
-        data: list = receive_stream.readQVariant() 
-        if(not isinstance(data[0], Request)):
-            return
-        if(not receive_stream.commitTransaction()):
-            return
-        match(data[0]):
-            case Request.AUTHORISATION:
-                self.check_account_slot(socket, data[1], data[2])
-            case Request.REGISTRATION:
-                self.reg_account_slot(socket, data[1], data[2], data[3], data[4])
-            case Request.GETCHATS:
-                self.get_chats_slot(socket, data[1])
-            case Request.GETMESSAGES:
-                self.get_messages_slot(socket, data[1], data[2])
-            case Request.GETACCINFO:
-                self.get_accinfo_slot(socket, data[1])
-            case Request.CHANGEINFO:
-                self.change_info_slot(socket, data[1], data[2], data[3], data[4])
-            case Request.CREATECHAT:
-                self.create_chat_slot(socket, data[1], data[2])
-            case Request.DELETECHAT:
-                self.del_chat_slot(socket, data[1])
-            case Request.ENTERCHATROOM:
-                self.chat_manager.identify_chatroom(socket, data[1], data[2])
-            case Request.EXITCHATROOM:
-                pass
-            case Request.SENDMESSAGE:
-                room = receive_stream.readString()
-                if(not isinstance(room, str)):
-                    return
-                author = receive_stream.readString()
-                message = receive_stream.readString()
-                if(not receive_stream.commitTransaction()):
-                    return
+        while(True):
+            if(socket.bytesAvailable() <= 0):
+                return
+            receive_stream.startTransaction()
+            data: list = receive_stream.readQVariant() 
+            if(not isinstance(data[0], Request)):
+                return
+            if(not receive_stream.commitTransaction()):
+                return
+            match(data[0]):
+                case Request.AUTHORISATION:
+                    self.check_account_slot(socket, data[1], data[2])
+                case Request.REGISTRATION:
+                    self.reg_account_slot(socket, data[1], data[2], data[3], data[4])
+                case Request.GETCHATS:
+                    self.get_chats_slot(socket, data[1])
+                case Request.GETMESSAGES:
+                    self.get_messages_slot(socket, data[1], data[2])
+                case Request.GETACCINFO:
+                    self.get_accinfo_slot(socket, data[1])
+                case Request.CHANGEINFO:
+                    self.change_info_slot(socket, data[1], data[2], data[3], data[4])
+                case Request.CREATECHAT:
+                    self.create_chat_slot(socket, data[1], data[2])
+                case Request.DELETECHAT:
+                    self.del_chat_slot(socket, data[1])
+                case Request.ENTERCHATROOM:
+                    self.chat_manager.enter_chatroom(socket, data[1], data[2])
+                case Request.EXITCHATROOM:
+                    self.chat_manager.exit_chatroom(data[1], data[2])
+                case Request.SENDMESSAGE:
+                    self.chat_manager.send_message(data[1],data[2], data[3])
 
 
     def SendToClient(self, socket:QTcpSocket, data): #как-то отправлять данные по потоку данных
@@ -88,6 +85,7 @@ class Server(QTcpServer):
             print("Error send to client")
         else:
             socket.write(block)
+            socket.waitForBytesWritten()
         
     def change_info_slot(self, socket, login, name, password, email):
         try:

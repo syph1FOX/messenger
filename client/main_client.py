@@ -74,8 +74,14 @@ class Main_Client(QObject):#сделать сигналы которые буд�
             case Request.DELETECHAT:
                 self.signals.delete_chat.emit(response[1])
 
-            case Request.SENDMESSAGE:#по сути получения нового сообщения в ui(неважно пришло оно получателю или отправителю)
-                pass
+            case Request.SENDMESSAGE:
+                if(self.account_id == response[1]):
+                    self.signals.send_message.emit(self.account_nickname, response[2])
+                    return
+                for user in self.chat_rooms.keys():
+                    if(nickname := self.chat_rooms.get(user, None)):
+                        self.signals.send_message.emit(nickname, response[2])
+                        return
             
 
     def connect(self):
@@ -96,17 +102,25 @@ class Main_Client(QObject):#сделать сигналы которые буд�
         self.socket.disconnectFromHost()
 
     def send_message(self, receiver:str, message:str):
-        pass
+        for user_id in self.chat_rooms:
+            if(self.chat_rooms[user_id] == receiver):
+                data = [Request.SENDMESSAGE, self.account_id, user_id, message]
+                self.send_to_server(data)
+                return
 
     def open_chatroom(self, username:str):
-        for user_id in self.chat_rooms:
-            if(self.chat_rooms[user_id] == username):
+        for user_id, nickname in self.chat_rooms.items():
+            if(nickname == username):
                 data = [Request.ENTERCHATROOM, self.account_id, user_id]
                 self.send_to_server(data)
                 return
 
-    def close_chatroom(self):
-        pass
+    def exit_chatroom(self, receiver):
+        for user_id in self.chat_rooms:
+            if(self.chat_rooms[user_id] == receiver):
+                data = [Request.EXITCHATROOM, self.account_id, user_id]
+                self.send_to_server(data)
+                return
         
     def check_account(self, login:str, password:str):
         data = [Request.AUTHORISATION, login, password]
@@ -153,4 +167,5 @@ class Main_Client(QObject):#сделать сигналы которые буд�
             print("Error send message to server")
         else:
             self.socket.write(block)
+            self.socket.waitForBytesWritten()
     
